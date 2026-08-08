@@ -1,5 +1,13 @@
 (() => {
   const els = {
+    loginScreen: document.getElementById("login-screen"),
+    loginForm: document.getElementById("login-form"),
+    loginEmail: document.getElementById("login-email"),
+    loginPassword: document.getElementById("login-password"),
+    loginError: document.getElementById("login-error"),
+    btnLogin: document.getElementById("btn-login"),
+    app: document.getElementById("app"),
+    btnLogout: document.getElementById("btn-logout"),
     viewMap: document.getElementById("view-map"),
     viewList: document.getElementById("view-list"),
     mapNotes: document.getElementById("map-notes"),
@@ -23,6 +31,36 @@
   };
 
   let currentTab = "map";
+  let isLoggedIn = false;
+
+  function showError(message) {
+    alert(message);
+  }
+
+  function showLogin() {
+    isLoggedIn = false;
+    els.app.hidden = true;
+    els.loginScreen.hidden = false;
+    els.overlay.hidden = true;
+    els.loginError.hidden = true;
+    els.loginError.textContent = "";
+  }
+
+  function showApp() {
+    isLoggedIn = true;
+    els.loginScreen.hidden = true;
+    els.app.hidden = false;
+  }
+
+  async function refreshTasks() {
+    try {
+      await loadTasks();
+      render();
+    } catch (err) {
+      console.error(err);
+      showError(err.message || "タスクの読み込みに失敗しました");
+    }
+  }
 
   function switchTab(tab) {
     currentTab = tab;
@@ -56,7 +94,6 @@
     return rem === 0 ? `${h}時間` : `${h}時間${rem}分`;
   }
 
-  /** datetime-local value from Date or ISO string */
   function toLocalInputValue(value) {
     const d = value instanceof Date ? value : new Date(value);
     if (Number.isNaN(d.getTime())) return "";
@@ -64,7 +101,6 @@
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
-  /** Default deadline: tomorrow 18:00 local */
   function defaultDeadlineValue() {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -131,27 +167,37 @@
     };
   }
 
-  function saveFromModal() {
+  async function saveFromModal() {
     const data = readFormData();
     if (!data) return;
 
     const id = els.taskId.value;
-    if (id) {
-      updateTask(id, data);
-    } else {
-      addTask(data);
+    try {
+      if (id) {
+        await updateTask(id, data);
+      } else {
+        await addTask(data);
+      }
+      closeModal();
+      render();
+    } catch (err) {
+      console.error(err);
+      showError(err.message || "タスクの保存に失敗しました");
     }
-    closeModal();
-    render();
   }
 
-  function deleteFromModal() {
+  async function deleteFromModal() {
     const id = els.taskId.value;
     if (!id) return;
     if (!confirm("このタスクを削除しますか？")) return;
-    deleteTask(id);
-    closeModal();
-    render();
+    try {
+      await deleteTask(id);
+      closeModal();
+      render();
+    } catch (err) {
+      console.error(err);
+      showError(err.message || "タスクの削除に失敗しました");
+    }
   }
 
   function renderMap() {
@@ -163,8 +209,6 @@
       const urgency = calculateUrgency(task.deadline, task.estimatedMinutes, now);
       const importance = Number(task.importance);
 
-      // X: urgency 0→left, 100→right; Y: importance 0→bottom, 100→top
-      // Keep notes slightly inset so they don't clip edges
       const inset = 6;
       const x = inset + (urgency / 100) * (100 - inset * 2);
       const y = inset + ((100 - importance) / 100) * (100 - inset * 2);
@@ -190,7 +234,6 @@
     els.taskList.innerHTML = "";
     els.listEmpty.hidden = tasks.length > 0;
 
-    // Sort by deadline ascending
     const sorted = [...tasks].sort(
       (a, b) => new Date(a.deadline) - new Date(b.deadline)
     );
@@ -207,10 +250,15 @@
       check.addEventListener("click", (e) => {
         e.stopPropagation();
       });
-      check.addEventListener("change", () => {
-        if (check.checked) {
-          completeTask(task.id);
+      check.addEventListener("change", async () => {
+        if (!check.checked) return;
+        try {
+          await completeTask(task.id);
           render();
+        } catch (err) {
+          console.error(err);
+          check.checked = false;
+          showError(err.message || "タスクの保存に失敗しました");
         }
       });
 
@@ -244,10 +292,44 @@
   }
 
   function render() {
+    if (!isLoggedIn) return;
     if (currentTab === "map") {
       renderMap();
     } else {
       renderList();
+    }
+  }
+
+  async function enterApp() {
+    showApp();
+    await refreshTasks();
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    els.loginError.hidden = true;
+    els.loginError.textContent = "";
+    els.btnLogin.disabled = true;
+    try {
+      await signIn(els.loginEmail.value.trim(), els.loginPassword.value);
+      els.loginPassword.value = "";
+      await enterApp();
+    } catch (err) {
+      console.error(err);
+      els.loginError.textContent = err.message || "ログインに失敗しました";
+      els.loginError.hidden = false;
+    } finally {
+      els.btnLogin.disabled = false;
+    }
+  }
+
+  async function handleLogout() {
+    try {
+      await signOut();
+      showLogin();
+    } catch (err) {
+      console.error(err);
+      showError(err.message || "ログアウトに失敗しました");
     }
   }
 
@@ -256,10 +338,16 @@
     btn.addEventListener("click", () => switchTab(btn.dataset.tab));
   });
 
+  els.loginForm.addEventListener("submit", handleLogin);
+  els.btnLogout.addEventListener("click", handleLogout);
   els.btnAdd.addEventListener("click", () => openModal());
   els.btnCancel.addEventListener("click", closeModal);
-  els.btnSave.addEventListener("click", saveFromModal);
-  els.btnDelete.addEventListener("click", deleteFromModal);
+  els.btnSave.addEventListener("click", () => {
+    void saveFromModal();
+  });
+  els.btnDelete.addEventListener("click", () => {
+    void deleteFromModal();
+  });
 
   els.importance.addEventListener("input", () => {
     els.importanceValue.textContent = els.importance.value;
@@ -271,7 +359,7 @@
 
   els.form.addEventListener("submit", (e) => {
     e.preventDefault();
-    saveFromModal();
+    void saveFromModal();
   });
 
   document.addEventListener("keydown", (e) => {
@@ -280,12 +368,26 @@
     }
   });
 
-  // Recalculate urgency when returning to Map / when page becomes visible
+  // Recalculate urgency / pull latest when returning to the page
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && currentTab === "map") {
-      renderMap();
+    if (document.visibilityState === "visible" && isLoggedIn) {
+      void refreshTasks();
     }
   });
 
-  render();
+  async function init() {
+    try {
+      const user = await getSessionUser();
+      if (user) {
+        await enterApp();
+      } else {
+        showLogin();
+      }
+    } catch (err) {
+      console.error(err);
+      showLogin();
+    }
+  }
+
+  void init();
 })();

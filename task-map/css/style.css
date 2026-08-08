@@ -59,6 +59,10 @@ select {
   position: relative;
 }
 
+.app[hidden] {
+  display: none !important;
+}
+
 /* Header */
 .app-header {
   display: flex;
@@ -78,6 +82,26 @@ select {
   font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.02em;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-logout {
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 4px;
+}
+
+.btn-logout:active {
+  opacity: 0.5;
 }
 
 .btn-add {
@@ -100,6 +124,70 @@ select {
 .btn-add:active {
   transform: scale(0.92);
   opacity: 0.85;
+}
+
+/* Login */
+.login-screen {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px calc(24px + var(--safe-bottom));
+  background: var(--bg);
+}
+
+.login-screen[hidden] {
+  display: none;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-align: center;
+}
+
+.login-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.login-error {
+  font-size: 14px;
+  color: var(--danger);
+  text-align: center;
+}
+
+.btn-login {
+  margin-top: 4px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.btn-login:active {
+  opacity: 0.85;
+}
+
+.btn-login:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 /* Main */
