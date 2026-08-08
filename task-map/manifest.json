@@ -1,0 +1,11 @@
+{
+  "name": "Task Map",
+  "short_name": "Task Map",
+  "description": "重要度×緊急度マップでタスクを可視化するToDoアプリ",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#f2f2f7",
+  "lang": "ja",
+  "icons": []
+}
