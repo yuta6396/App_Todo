@@ -56,6 +56,11 @@
         <ul class="task-list" id="task-list"></ul>
         <p class="empty-message" id="list-empty" hidden>タスクはありません</p>
       </section>
+
+      <section class="view view-archive" id="view-archive" aria-label="アーカイブ">
+        <ul class="task-list" id="archive-list"></ul>
+        <p class="empty-message" id="archive-empty" hidden>完了したタスクはありません</p>
+      </section>
     </main>
 
     <nav class="tab-bar" role="tablist">
@@ -80,6 +85,16 @@
           </svg>
         </span>
         <span class="tab-label">List</span>
+      </button>
+      <button type="button" class="tab" data-tab="archive" role="tab" aria-selected="false">
+        <span class="tab-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M3 7h18v3H3z"/>
+            <path d="M5 10v9h14v-9"/>
+            <path d="M10 14h4"/>
+          </svg>
+        </span>
+        <span class="tab-label">Archive</span>
       </button>
     </nav>
   </div>
@@ -118,7 +133,10 @@
             <option value="other">その他</option>
           </select>
         </label>
-        <button type="button" class="btn-delete" id="btn-delete" hidden>削除</button>
+        <div class="modal-actions" id="modal-actions" hidden>
+          <button type="button" class="btn-complete" id="btn-complete">完了</button>
+          <button type="button" class="btn-delete" id="btn-delete">削除</button>
+        </div>
       </form>
     </div>
   </div>

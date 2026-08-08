@@ -84,6 +84,10 @@ function getActiveTasks() {
   return taskCache.filter((t) => !t.completed);
 }
 
+function getArchivedTasks() {
+  return taskCache.filter((t) => t.completed);
+}
+
 function getTaskById(id) {
   return taskCache.find((t) => t.id === id) || null;
 }

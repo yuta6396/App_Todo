@@ -10,9 +10,12 @@
     btnLogout: document.getElementById("btn-logout"),
     viewMap: document.getElementById("view-map"),
     viewList: document.getElementById("view-list"),
+    viewArchive: document.getElementById("view-archive"),
     mapNotes: document.getElementById("map-notes"),
     taskList: document.getElementById("task-list"),
     listEmpty: document.getElementById("list-empty"),
+    archiveList: document.getElementById("archive-list"),
+    archiveEmpty: document.getElementById("archive-empty"),
     btnAdd: document.getElementById("btn-add"),
     overlay: document.getElementById("modal-overlay"),
     modalTitle: document.getElementById("modal-title"),
@@ -26,6 +29,8 @@
     category: document.getElementById("task-category"),
     btnCancel: document.getElementById("btn-cancel"),
     btnSave: document.getElementById("btn-save"),
+    modalActions: document.getElementById("modal-actions"),
+    btnComplete: document.getElementById("btn-complete"),
     btnDelete: document.getElementById("btn-delete"),
     tabs: document.querySelectorAll(".tab"),
   };
@@ -71,6 +76,7 @@
     });
     els.viewMap.classList.toggle("is-active", tab === "map");
     els.viewList.classList.toggle("is-active", tab === "list");
+    els.viewArchive.classList.toggle("is-active", tab === "archive");
     render();
   }
 
@@ -110,7 +116,7 @@
 
   function openModal(task = null) {
     if (task) {
-      els.modalTitle.textContent = "タスク編集";
+      els.modalTitle.textContent = task.completed ? "完了タスク" : "タスク編集";
       els.taskId.value = task.id;
       els.title.value = task.title;
       els.deadline.value = toLocalInputValue(task.deadline);
@@ -118,6 +124,8 @@
       els.importance.value = task.importance;
       els.importanceValue.textContent = task.importance;
       els.category.value = task.category;
+      els.modalActions.hidden = false;
+      els.btnComplete.hidden = !!task.completed;
       els.btnDelete.hidden = false;
     } else {
       els.modalTitle.textContent = "新規タスク";
@@ -128,6 +136,8 @@
       els.importance.value = 50;
       els.importanceValue.textContent = "50";
       els.category.value = "research";
+      els.modalActions.hidden = true;
+      els.btnComplete.hidden = true;
       els.btnDelete.hidden = true;
     }
     els.overlay.hidden = false;
@@ -186,10 +196,24 @@
     }
   }
 
+  async function completeFromModal() {
+    const id = els.taskId.value;
+    if (!id) return;
+    if (!confirm("このタスクを完了してアーカイブしますか？")) return;
+    try {
+      await completeTask(id);
+      closeModal();
+      render();
+    } catch (err) {
+      console.error(err);
+      showError(err.message || "タスクの保存に失敗しました");
+    }
+  }
+
   async function deleteFromModal() {
     const id = els.taskId.value;
     if (!id) return;
-    if (!confirm("このタスクを削除しますか？")) return;
+    if (!confirm("このタスクを削除しますか？\n（アーカイブには残りません）")) return;
     try {
       await deleteTask(id);
       closeModal();
@@ -246,7 +270,7 @@
       const check = document.createElement("input");
       check.type = "checkbox";
       check.className = "task-check";
-      check.setAttribute("aria-label", "完了");
+      check.setAttribute("aria-label", "完了してアーカイブ");
       check.addEventListener("click", (e) => {
         e.stopPropagation();
       });
@@ -283,6 +307,37 @@
     });
   }
 
+  function renderArchive() {
+    const tasks = getArchivedTasks();
+    els.archiveList.innerHTML = "";
+    els.archiveEmpty.hidden = tasks.length > 0;
+
+    const sorted = [...tasks].sort(
+      (a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)
+    );
+
+    sorted.forEach((task) => {
+      const cat = CATEGORIES[task.category] || CATEGORIES.other;
+      const li = document.createElement("li");
+      li.className = "task-item task-item-archived";
+
+      const body = document.createElement("div");
+      body.className = "task-body";
+      body.innerHTML = `
+        <div class="task-name">${escapeHtml(task.title)}</div>
+        <div class="task-meta">
+          <span><span class="task-cat-dot cat-${task.category}"></span>${escapeHtml(cat.label)}</span>
+          <span>${escapeHtml(formatDeadline(task.deadline))}</span>
+          <span>${escapeHtml(formatMinutes(task.estimatedMinutes))}</span>
+        </div>
+      `;
+
+      li.appendChild(body);
+      li.addEventListener("click", () => openModal(task));
+      els.archiveList.appendChild(li);
+    });
+  }
+
   function escapeHtml(str) {
     return String(str)
       .replace(/&/g, "&amp;")
@@ -295,8 +350,10 @@
     if (!isLoggedIn) return;
     if (currentTab === "map") {
       renderMap();
-    } else {
+    } else if (currentTab === "list") {
       renderList();
+    } else {
+      renderArchive();
     }
   }
 
@@ -344,6 +401,9 @@
   els.btnCancel.addEventListener("click", closeModal);
   els.btnSave.addEventListener("click", () => {
     void saveFromModal();
+  });
+  els.btnComplete.addEventListener("click", () => {
+    void completeFromModal();
   });
   els.btnDelete.addEventListener("click", () => {
     void deleteFromModal();
