@@ -17,6 +17,9 @@ create table if not exists public.tasks (
 create index if not exists tasks_user_id_idx on public.tasks (user_id);
 create index if not exists tasks_user_completed_idx on public.tasks (user_id, completed);
 
+-- Table privileges (RLS policies still restrict rows to auth.uid() = user_id)
+grant select, insert, update, delete on table public.tasks to authenticated;
+
 alter table public.tasks enable row level security;
 
 drop policy if exists "tasks_select_own" on public.tasks;
